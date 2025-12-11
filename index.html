@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>究極進化電子寵物 v3.0</title>
+    <style>
+        :root {
+            --bg-sunny: #87CEEB;
+            --bg-night: #2c3e50;
+            --pet-color: #fca5a5;
+            --pet-dark: rgba(0,0,0,0.15);
+        }
+
+        body {
+            margin: 0; overflow: hidden;
+            background-color: var(--bg-sunny);
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            user-select: none; transition: background-color 1s;
+            touch-action: none; -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- 寵物構造 --- */
+        #pet-container {
+            position: absolute; width: 100px; height: 120px;
+            transition: top 0.5s, left 0.5s, transform 0.2s; 
+            z-index: 10; cursor: pointer;
+        }
+        .pet-visual-group { width: 100%; height: 100%; position: relative; transition: transform 0.2s; }
+        
+        .pet-hat {
+            position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+            font-size: 40px; z-index: 20; text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s; pointer-events: none;
+        }
+        [data-type="robot"] .pet-hat { top: -35px; }
+
+        .pet-body {
+            position: absolute; width: 60px; height: 50px;
+            background-color: var(--pet-color);
+            bottom: 25px; left: 20px; border-radius: 20px;
+            box-shadow: inset -5px -5px var(--pet-dark); z-index: 2; transition: all 0.5s;
+        }
+        .pet-head {
+            position: absolute; font-size: 55px; top: -5px; left: 50%; 
+            transform: translateX(-50%); z-index: 10; text-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .limb { position: absolute; width: 12px; height: 25px; background: var(--pet-color); border-radius: 10px; transition: all 0.5s; box-shadow: inset -2px 0 var(--pet-dark); }
+        .arm { top: 55px; height: 20px; z-index: 3; }
+        .arm.left { left: 15px; transform: rotate(20deg); }
+        .arm.right { right: 15px; transform: rotate(-20deg); }
+        .leg { bottom: 5px; height: 25px; z-index: 1; }
+        .leg.left { left: 25px; }
+        .leg.right { right: 25px; }
+
+        /* 配件 */
+        .ear, .tail, .wing, .antenna { display: none; position: absolute; background: var(--pet-color); transition: all 0.5s; }
+        
+        [data-type="robot"] .pet-body, [data-type="robot"] .limb { border-radius: 2px; }
+        [data-type="robot"] .antenna { display: block; top: -20px; left: 48%; width: 4px; height: 20px; background: #555; z-index: 1; }
+        [data-type="robot"] .antenna::after { content:''; position: absolute; top:-6px; left:-3px; width:10px; height:10px; background:red; border-radius:50%; animation: blink 1s infinite; }
+        
+        [data-type="cat"] .ear { display: block; top: -5px; width: 20px; height: 20px; z-index: 9; }
+        [data-type="cat"] .ear.left { left: 5px; transform: rotate(-15deg); border-radius: 5px 20px 0 0; }
+        [data-type="cat"] .ear.right { right: 5px; transform: rotate(15deg); border-radius: 20px 5px 0 0; }
+        [data-type="cat"] .tail { display: block; bottom: 30px; right: -10px; width: 50px; height: 10px; border-radius: 10px; animation: tail 2s infinite; z-index: 0; }
+
+        [data-type="dog"] .ear { display: block; top: 10px; width: 18px; height: 25px; background: var(--pet-dark); z-index: 9; }
+        [data-type="dog"] .ear.left { left: -5px; transform: rotate(10deg); border-radius: 0 0 10px 10px; }
+        [data-type="dog"] .ear.right { right: -5px; transform: rotate(-10deg); border-radius: 0 0 10px 10px; }
+        [data-type="dog"] .tail { display: block; width: 20px; height: 8px; bottom: 35px; right: -5px; animation: tail-fast 0.3s infinite; }
+
+        [data-type="dragon"] .wing { display: block; top: 25px; width: 35px; height: 20px; background: var(--pet-dark); border-radius: 0 30px 0 30px; z-index: 0; animation: fly 0.5s infinite alternate; }
+        [data-type="dragon"] .wing.left { left: -25px; transform: scaleX(-1); }
+        [data-type="dragon"] .wing.right { right: -25px; }
+
+        @keyframes blink { 50% { opacity: 0.3; } }
+        @keyframes tail { 0%,100% { transform: rotate(-45deg); } 50% { transform: rotate(-25deg); } }
+        @keyframes tail-fast { 0%,100% { transform: rotate(-20deg); } 50% { transform: rotate(20deg); } }
+        @keyframes fly { to { transform: translateY(-8px); } }
+        @keyframes egg-wobble { 0%,100%{transform:translateX(-50%) rotate(0)} 25%{transform:translateX(-50%) rotate(-5deg)} 75%{transform:translateX(-50%) rotate(5deg)} }
+        
+        .is-egg .pet-body, .is-egg .limb, .is-egg .ear, .is-egg .tail, .is-egg .wing, .is-egg .antenna, .is-egg .pet-hat { display: none !important; }
+        .is-egg .pet-head { font-size: 80px; top: 20px; animation: egg-wobble 2s infinite; }
+        
+        /* UI */
+        .hud-top { position: fixed; top: 15px; left: 15px; background: rgba(255,255,255,0.95); padding: 10px 15px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-weight: bold; z-index: 100; min-width: 130px; }
+        .xp-container { height: 6px; background: #ddd; border-radius: 3px; margin-top: 5px; overflow: hidden; }
+        .xp-bar { height: 100%; background: #f1c40f; width: 0%; transition: width 0.3s; }
+
+        .hud-bottom { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 94%; max-width: 420px; background: rgba(255,255,255,0.95); border-radius: 25px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 100; display: flex; flex-direction: column; gap: 8px; }
+        .bars { display: flex; gap: 10px; margin-bottom: 5px; }
+        .bar-wrap { flex: 1; text-align: center; }
+        .bar-bg { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin-top: 2px; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.5s; }
+
+        .btn-group { display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; }
+        button { border: none; background: #f0f0f0; padding: 10px 10px; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; border: 1px solid #ccc; font-size: 13px; display: flex; align-items: center; gap: 3px; }
+        button:hover { background: #e0e0e0; transform: translateY(-2px); }
+        .btn-shop { background: #fff0f6; border-color: #ffadd2; color: #c41d7f; }
+
+        /* Modals */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal-content { background: white; padding: 20px; border-radius: 20px; text-align: left; max-width: 350px; width: 90%; max-height: 85vh; overflow-y: auto; position: relative; animation: popIn 0.3s; }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .tab-group { display: flex; border-bottom: 2px solid #eee; margin-bottom: 15px; }
+        .tab-btn { flex: 1; background: none; border: none; padding: 10px; color: #999; cursor: pointer; border-bottom: 3px solid transparent; font-size: 14px; }
+        .tab-btn.active { color: #333; font-weight: bold; border-bottom-color: #333; }
+        .tab-content { display: none; font-size: 14px; line-height: 1.6; color: #444; }
+        .tab-content.active { display: block; }
+
+        .shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .shop-item { border: 1px solid #eee; border-radius: 10px; padding: 10px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; }
+        .shop-item:hover { background: #f9f9f9; border-color: #ddd; }
+        .shop-item.owned { background: #e6fffa; border-color: #38b2ac; }
+        .shop-item.equipped { background: #fffbe6; border-color: #f5a623; border-width: 2px; }
+        .item-icon { font-size: 32px; display: block; margin-bottom: 5px; }
+        .item-name { font-weight: bold; font-size: 14px; display: block; }
+        .item-price { font-size: 12px; color: #666; display: block; }
+        .item-badge { position: absolute; top: 5px; right: 5px; font-size: 10px; background: #38b2ac; color: white; padding: 2px 5px; border-radius: 5px; }
+
+        .info-box { background: #f8f9fa; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #eee; }
+        .code-area { width: 100%; height: 60px; background: #333; color: #0f0; font-family: monospace; font-size: 12px; border-radius: 8px; padding: 10px; box-sizing: border-box; resize: none; margin-bottom: 10px; }
+        .privacy-note { font-size: 12px; color: #777; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; text-align: center; }
+
+        /* Author Button Style */
+        .btn-author {
+            display: flex; align-items: center; justify-content: center; width: 100%;
+            background: #222; color: white; padding: 12px; border-radius: 10px;
+            text-decoration: none; font-weight: bold; margin-bottom: 15px; transition: 0.3s;
+        }
+        .btn-author:hover { background: #444; transform: scale(1.02); }
+        .log-list { font-size: 12px; color: #555; border-left: 2px solid #ddd; padding-left: 10px; margin-left: 5px; }
+        .log-item { margin-bottom: 10px; }
+        .log-ver { font-weight: bold; color: #000; }
+
+        /* Game Over */
+        #death-screen { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:black; color:white; z-index:2000; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+
+        /* Effects */
+        .float-text { position: absolute; font-weight: bold; font-size: 20px; pointer-events: none; z-index: 200; animation: floatUp 1s forwards; text-shadow: 1px 1px 0 #fff; }
+        @keyframes floatUp { to { opacity: 0; transform: translateY(-60px); } }
+        #bubble { position: absolute; top: -75px; left: 50%; transform: translateX(-50%); background: white; padding: 5px 12px; border-radius: 15px; border: 2px solid #333; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; font-weight: bold; z-index: 20; }
+        .particle { position: fixed; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; animation: particle-fall 1s forwards; z-index: 500; }
+        @keyframes particle-fall { to { transform: translate(var(--tx), var(--ty)); opacity: 0; } }
+        .poop { position: absolute; font-size: 30px; cursor: pointer; animation: drop 0.5s; z-index: 5; }
+        @keyframes drop { from { transform: translateY(-50px); opacity: 0; } }
+        body.night-mode { background-color: var(--bg-night); }
+    </style>
+</head>
+<body>
+
+    <div class="hud-top">
+        <div>💰 <span id="money">0</span></div>
+        <div style="font-size:12px; color:#666; margin-top:2px;">Lv.<span id="lvl">0</span> <span id="type-name">蛋</span></div>
+        <div class="xp-container"><div id="xp-bar" class="xp-bar"></div></div>
+    </div>
+
+    <div id="pet-container" onclick="interact()">
+        <div id="bubble">...</div>
+        <div class="pet-visual-group" id="pet-group" data-type="egg">
+            <div class="pet-hat" id="pet-hat"></div>
+            <div class="pet-head" id="pet-head">🥚</div>
+            <div class="antenna"></div>
+            <div class="ear left"></div> <div class="ear right"></div>
+            <div class="wing left"></div> <div class="wing right"></div>
+            <div class="tail"></div>
+            <div class="pet-body"></div>
+            <div class="limb arm left"></div> <div class="limb arm right"></div>
+            <div class="limb leg left"></div> <div class="limb leg right"></div>
+        </div>
+    </div>
+
+    <div class="hud-bottom">
+        <div class="bars">
+            <div class="bar-wrap"><div style="font-size:12px">飽食</div><div class="bar-bg"><div id="bar-hunger" class="bar-fill" style="background:#ff7675;"></div></div></div>
+            <div class="bar-wrap"><div style="font-size:12px">心情</div><div class="bar-bg"><div id="bar-fun" class="bar-fill" style="background:#74b9ff;"></div></div></div>
+            <div class="bar-wrap"><div style="font-size:12px">健康</div><div class="bar-bg"><div id="bar-health" class="bar-fill" style="background:#55efc4;"></div></div></div>
+        </div>
+        <div class="btn-group">
+            <button onclick="feed()">🍗 餵食</button>
+            <button onclick="openGame()" style="background:#fef3c7; border-color:#f59e0b;">🎮 玩耍</button>
+            <button onclick="work()">💼 打工</button>
+            <button onclick="openShop()" class="btn-shop">🛒 商店</button>
+            <button onclick="toggleSleep()" id="btn-sleep">💡 關燈</button>
+            <button onclick="cleanAll()">🧹 掃地</button>
+            <button onclick="changePet()">🔄 換角</button>
+            <button onclick="openSettings()" style="background:#e2e8f0;">⚙️</button>
+        </div>
+    </div>
+
+    <!-- Shop Modal -->
+    <div class="modal" id="shopModal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0">時尚商店街</h3>
+                <span onclick="closeModal('shopModal')" style="cursor:pointer; font-size:20px;">✕</span>
+            </div>
+            <div style="margin-bottom:10px; font-size:14px; color:#666;">持有金錢: 💰<span id="shop-money">0</span></div>
+            <div class="tab-group">
+                <button class="tab-btn active" onclick="switchTab('tab-buy', this)">🛒 購買</button>
+                <button class="tab-btn" onclick="switchTab('tab-inv', this)">🎒 背包</button>
+            </div>
+            <div id="tab-buy" class="tab-content active"><div class="shop-grid" id="shop-list"></div></div>
+            <div id="tab-inv" class="tab-content">
+                <div class="shop-grid" id="inventory-list"></div>
+                <button onclick="unequip()" style="width:100%; margin-top:15px; justify-content:center;">🚫 卸下裝備</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Modal -->
+    <div class="modal" id="gameModal">
+        <div class="modal-content" style="text-align:center;">
+            <h3>猜拳對決 ✊🖐️✌️</h3>
+            <p>贏了賺大錢，輸了扣心情！</p>
+            <div style="font-size:24px; font-weight:bold; margin:15px 0;" id="game-result">準備...</div>
+            <div style="display:flex; justify-content:space-around;">
+                <button onclick="playRPS('r')" style="font-size:30px; width:60px; height:60px; justify-content:center;">✊</button>
+                <button onclick="playRPS('p')" style="font-size:30px; width:60px; height:60px; justify-content:center;">🖐️</button>
+                <button onclick="playRPS('s')" style="font-size:30px; width:60px; height:60px; justify-content:center;">✌️</button>
+            </div>
+            <button onclick="closeModal('gameModal')" style="width:100%; margin-top:15px; justify-content:center;">不玩了</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0">⚙️ 系統選單</h3>
+                <span onclick="closeModal('settingsModal')" style="cursor:pointer; font-size:20px;">✕</span>
+            </div>
+            <div class="tab-group" style="margin-top:10px;">
+                <button class="tab-btn active" onclick="switchTab('tab-about', this)">ℹ️ 關於</button>
+                <button class="tab-btn" onclick="switchTab('tab-data', this)">💾 存檔</button>
+            </div>
+            
+            <!-- About Tab -->
+            <div id="tab-about" class="tab-content active">
+                <a href="https://vocus.cc/user/@WUCJ" target="_blank" class="btn-author">
+                    ✏️ 追蹤作者 WUCJ (Vocus)
+                </a>
+                
+                <div class="info-box">
+                    <b>🔄 版本歷程</b>
+                    <div class="log-list">
+                        <div class="log-item">
+                            <div class="log-ver">v3.0 - 時尚商店版</div>
+                            新增商店系統、飾品裝備、萬能藥。
+                        </div>
+                        <div class="log-item">
+                            <div class="log-ver">v2.0 - 遊戲互動版</div>
+                            新增猜拳小遊戲、死亡機制、音效。
+                        </div>
+                        <div class="log-item">
+                            <div class="log-ver">v1.0 - 初始版</div>
+                            基礎數值、變形進化系統。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Tab -->
+            <div id="tab-data" class="tab-content">
+                <p><b>匯出存檔 (備份)</b></p>
+                <textarea id="export-area" class="code-area" readonly onclick="this.select()"></textarea>
+                <button onclick="copySaveCode()" style="width:100%; justify-content:center;">📋 複製代碼</button>
+                <p><b>匯入存檔</b></p>
+                <textarea id="import-area" class="code-area" placeholder="貼上代碼..."></textarea>
+                <button onclick="loadSaveCode()" style="width:100%; justify-content:center; background:#ff7675; color:white;">📥 讀取</button>
+            </div>
+            <div class="privacy-note">🔒 存檔僅儲存於本機 (localStorage)。</div>
+        </div>
+    </div>
+
+    <!-- Death Screen -->
+    <div id="death-screen">
+        <div style="font-size:80px">🪦</div>
+        <h2>寵物死掉了...</h2>
+        <button onclick="resetGame()" style="font-size:20px; padding:15px 30px; margin-top:20px;">再養一隻</button>
+    </div>
+
+<script>
+    const PETS=[{id:'dog',name:'柴柴',emoji:'🐶',color:'#eab308'},{id:'cat',name:'喵皇',emoji:'🐱',color:'#f5f5f5'},{id:'rabbit',name:'兔兔',emoji:'🐰',color:'#ffb7b2'},{id:'robot',name:'機器人',emoji:'🤖',color:'#94a3b8'},{id:'dragon',name:'噴火龍',emoji:'🐲',color:'#ef4444'}];
+    const ITEMS=[{id:'potion_hp',name:'萬能藥',icon:'💊',price:100,type:'consumable'},{id:'hat_bow',name:'蝴蝶結',icon:'🎀',price:50,type:'gear'},{id:'hat_crown',name:'皇冠',icon:'👑',price:200,type:'gear'},{id:'hat_cowboy',name:'牛仔帽',icon:'🤠',price:80,type:'gear'},{id:'hat_sunglasses',name:'墨鏡',icon:'🕶️',price:60,type:'gear'},{id:'hat_flower',name:'小花',icon:'🌸',price:40,type:'gear'},{id:'hat_top',name:'紳士帽',icon:'🎩',price:120,type:'gear'}];
+    
+    let state={typeIdx:0,level:0,xp:0,money:100,hunger:80,fun:80,health:100,x:window.innerWidth/2,y:window.innerHeight/2,isSleeping:false,isWorking:false,isDead:false,inventory:[],equipped:null};
+    
+    const AudioContext=window.AudioContext||window.webkitAudioContext; let audioCtx;
+    function playSound(t){
+        if(!audioCtx)audioCtx=new AudioContext(); if(audioCtx.state==='suspended')audioCtx.resume();
+        const o=audioCtx.createOscillator(),g=audioCtx.createGain(),n=audioCtx.currentTime; o.connect(g); g.connect(audioCtx.destination);
+        if(t==='jump'){o.frequency.setValueAtTime(400,n);o.frequency.exponentialRampToValueAtTime(800,n+0.1);g.gain.setValueAtTime(0.1,n);g.gain.exponentialRampToValueAtTime(0.01,n+0.1);o.start(n);o.stop(n+0.1);}
+        else if(t==='buy'){o.type='sine';o.frequency.setValueAtTime(600,n);o.frequency.setValueAtTime(1200,n+0.1);g.gain.setValueAtTime(0.1,n);g.gain.linearRampToValueAtTime(0.01,n+0.3);o.start(n);o.stop(n+0.3);}
+        else if(t==='win'){o.type='triangle';o.frequency.setValueAtTime(500,n);o.frequency.setValueAtTime(1000,n+0.2);g.gain.setValueAtTime(0.1,n);g.gain.linearRampToValueAtTime(0.01,n+0.4);o.start(n);o.stop(n+0.4);}
+        else if(t==='lose'){o.type='sawtooth';o.frequency.setValueAtTime(300,n);o.frequency.linearRampToValueAtTime(50,n+0.3);g.gain.setValueAtTime(0.1,n);g.gain.linearRampToValueAtTime(0.01,n+0.3);o.start(n);o.stop(n+0.3);}
+    }
+
+    function init(){loadGame();updateUI();updateVisuals();setInterval(loop,1000);setInterval(aiMove,3000);setInterval(maybePoop,5000);}
+    function loop(){
+        if(state.isDead)return;
+        if(state.level===0)state.xp+=3;
+        else{if(!state.isSleeping){state.hunger-=1.5;state.fun-=1;if(state.hunger<20||state.fun<20)state.health-=2;else if(state.hunger>80&&state.fun>80)state.health+=1;}else{state.hunger-=0.5;state.health+=2;}}
+        state.hunger=Math.max(0,Math.min(100,state.hunger));state.fun=Math.max(0,Math.min(100,state.fun));state.health=Math.max(0,Math.min(100,state.health));
+        if(state.health<=0)die(); checkLevelUp(); updateUI(); saveGame();
+    }
+    function checkLevelUp(){if(state.level<2&&state.xp>=(state.level===0?100:300)){state.level++;state.xp=0;playSound('win');explodeParticles(window.innerWidth/2,window.innerHeight/2,20);showFloatText("進化!","#ffd700");updateVisuals();}}
+    function interact(){if(state.isDead||state.isSleeping||state.isWorking)return; document.getElementById('pet-container').style.transform="scale(1.2)"; setTimeout(()=>updateVisuals(),150); if(state.level===0){state.xp+=5;showFloatText("搖晃...","#fff");playSound('jump');return;} state.fun=Math.min(100,state.fun+5);state.xp+=2;playSound('jump');showFloatText("❤️","#ff7675");updateUI();}
+    function feed(){if(state.level===0)return say("蛋不能吃");if(state.money<15)return say("沒錢");state.money-=15;state.hunger=Math.min(100,state.hunger+40);playSound('buy');showFloatText("好吃!","#55efc4");updateUI();}
+    function work(){if(state.level===0||state.isWorking)return;state.isWorking=true;say("打工...");document.getElementById('pet-container').style.left="120%";setTimeout(()=>{state.isWorking=false;state.money+=60;state.hunger-=20;state.fun-=20;state.x=window.innerWidth/2;updatePos();playSound('win');showFloatText("+$60","#f1c40f");updateUI();},3000);}
+    
+    function openShop(){if(state.level===0)return say("蛋不能買");document.getElementById('shop-money').innerText=state.money;renderShop();document.getElementById('shopModal').style.display='flex';}
+    function renderShop(){
+        const bl=document.getElementById('shop-list');bl.innerHTML='';ITEMS.forEach(i=>{const o=state.inventory.includes(i.id);const d=document.createElement('div');d.className=`shop-item ${o&&i.type==='gear'?'owned':''}`;d.onclick=()=>buyItem(i.id);d.innerHTML=`<div class="item-icon">${i.icon}</div><div class="item-name">${i.name}</div><div class="item-price">$${i.price}</div>${o&&i.type==='gear'?'<div class="item-badge">已擁有</div>':''}`;bl.appendChild(d);});
+        const il=document.getElementById('inventory-list');il.innerHTML='';if(!state.inventory.length)il.innerHTML='<div style="grid-column:span 2;color:#999;text-align:center;">空</div>';state.inventory.forEach(id=>{const i=ITEMS.find(x=>x.id===id);if(!i)return;const eq=state.equipped===id;const d=document.createElement('div');d.className=`shop-item ${eq?'equipped':''}`;d.onclick=()=>equipItem(id);d.innerHTML=`<div class="item-icon">${i.icon}</div><div class="item-name">${i.name}</div>${eq?'<div class="item-badge" style="background:#f5a623">穿戴中</div>':''}`;il.appendChild(d);});
+    }
+    function buyItem(id){const i=ITEMS.find(x=>x.id===id);if(state.money<i.price)return alert("錢不夠");if(i.type==='gear'&&state.inventory.includes(id))return alert("已擁有");state.money-=i.price;playSound('buy');document.getElementById('shop-money').innerText=state.money;if(i.type==='consumable'){if(id==='potion_hp'){state.health=100;alert("已恢復健康");updateUI();}}else{state.inventory.push(id);alert("已購買");renderShop();}saveGame();updateUI();}
+    function equipItem(id){state.equipped=id;updateVisuals();renderShop();say("換裝!");saveGame();}
+    function unequip(){state.equipped=null;updateVisuals();renderShop();saveGame();}
+    
+    function openGame(){if(state.level===0)return say("蛋不能玩");document.getElementById('gameModal').style.display='flex';document.getElementById('game-result').innerText="請出拳";}
+    function playRPS(u){const ai=['r','p','s'][Math.floor(Math.random()*3)];const m={r:'✊',p:'🖐️',s:'✌️'};const rEl=document.getElementById('game-result');let res='lose';if(u===ai)res='draw';else if((u==='r'&&ai==='s')||(u==='p'&&ai==='r')||(u==='s'&&ai==='p'))res='win';if(res==='win'){state.money+=30;state.fun=Math.min(100,state.fun+20);state.xp+=10;rEl.innerText=`${m[ai]} 你贏了!`;rEl.style.color='green';playSound('win');explodeParticles(window.innerWidth/2,window.innerHeight/2,10);}else if(res==='lose'){state.fun=Math.max(0,state.fun-10);rEl.innerText=`${m[ai]} 你輸了`;rEl.style.color='red';playSound('lose');}else{rEl.innerText=`${m[ai]} 平手`;rEl.style.color='#666';}updateUI();}
+    
+    function updateVisuals(){const d=PETS[state.typeIdx];document.documentElement.style.setProperty('--pet-color',d.color);const hat=document.getElementById('pet-hat');if(state.equipped&&state.level>0){const i=ITEMS.find(x=>x.id===state.equipped);hat.innerText=i?i.icon:'';hat.style.display='block';}else{hat.style.display='none';}const grp=document.getElementById('pet-group');if(state.level===0){grp.setAttribute('data-type','egg');document.getElementById('pet-head').textContent='🥚';document.getElementById('pet-container').classList.add('is-egg');document.getElementById('type-name').innerText="神秘蛋";}else{grp.setAttribute('data-type',d.id);document.getElementById('pet-head').textContent=d.emoji;document.getElementById('pet-container').classList.remove('is-egg');document.getElementById('type-name').innerText=d.name;document.getElementById('pet-container').style.transform=state.level===2?'scale(1.3)':'scale(1)';}updatePos();}
+    function aiMove(){if(state.level===0||state.isSleeping||state.isWorking||state.isDead)return;if(Math.random()<0.4){const tx=Math.random()*(window.innerWidth-120)+60,ty=Math.random()*(window.innerHeight-300)+60;if(tx<state.x)document.getElementById('pet-group').style.transform="scaleX(-1)";else document.getElementById('pet-group').style.transform="scaleX(1)";state.x=tx;state.y=ty;updatePos();const c=document.getElementById('pet-container');c.classList.add('anim-walk');setTimeout(()=>c.classList.remove('anim-walk'),1000);}}
+    function toggleSleep(){state.isSleeping=!state.isSleeping;if(state.isSleeping){document.body.classList.add('night-mode');document.getElementById('pet-container').style.filter="brightness(0.6)";document.getElementById('btn-sleep').textContent="☀️ 開燈";}else{document.body.classList.remove('night-mode');document.getElementById('pet-container').style.filter="none";document.getElementById('btn-sleep').textContent="💡 關燈";}}
+    function changePet(){if(state.level===0)return;state.typeIdx=(state.typeIdx+1)%PETS.length;updateVisuals();playSound('jump');}
+    function maybePoop(){if(state.level>0&&!state.isSleeping&&!state.isWorking&&Math.random()<0.1){const p=document.createElement('div');p.className='poop';p.textContent='💩';p.style.left=(state.x+Math.random()*40-20)+'px';p.style.top=(state.y+Math.random()*40-20)+'px';p.onclick=function(){this.remove();state.money+=2;playSound('jump');updateUI();};document.body.appendChild(p);}}
+    function cleanAll(){document.querySelectorAll('.poop').forEach(e=>e.remove());playSound('buy');updateUI();}
+    function die(){state.isDead=true;document.getElementById('death-screen').style.display='flex';playSound('lose');localStorage.removeItem('petSaveFashion');}
+    function resetGame(){if(confirm("重養?")){localStorage.removeItem('petSaveFashion');location.reload();}}
+    function openSettings(){document.getElementById('settingsModal').style.display='flex';document.getElementById('export-area').value=btoa(JSON.stringify(state));}
+    function closeModal(id){document.getElementById(id).style.display='none';}
+    function switchTab(id,btn){const p=btn.parentElement.parentElement;p.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));p.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));p.querySelector('#'+id).classList.add('active');btn.classList.add('active');}
+    function copySaveCode(){document.getElementById("export-area").select();document.execCommand("copy");alert("已複製");}
+    function loadSaveCode(){try{const d=JSON.parse(atob(document.getElementById("import-area").value));if(d.money!=undefined){state=d;saveGame();location.reload();}}catch(e){alert("代碼無效");}}
+    function updatePos(){document.getElementById('pet-container').style.left=(state.x-50)+'px';document.getElementById('pet-container').style.top=(state.y-60)+'px';}
+    function showFloatText(t,c){const d=document.createElement('div');d.className='float-text';d.textContent=t;d.style.color=c;d.style.left=state.x+'px';d.style.top=(state.y-50)+'px';document.body.appendChild(d);setTimeout(()=>d.remove(),1000);}
+    function say(t){const b=document.getElementById('bubble');b.textContent=t;b.style.opacity=1;setTimeout(()=>b.style.opacity=0,2000);}
+    function updateUI(){document.getElementById('money').textContent=state.money;document.getElementById('lvl').textContent=state.level;document.getElementById('bar-hunger').style.width=state.hunger+'%';document.getElementById('bar-fun').style.width=state.fun+'%';document.getElementById('bar-health').style.width=state.health+'%';document.getElementById('xp-bar').style.width=Math.min(100,(state.xp/(state.level===0?100:300))*100)+'%';}
+    function explodeParticles(x,y,c){for(let i=0;i<c;i++){const p=document.createElement('div');p.className='particle';p.style.left=x+'px';p.style.top=y+'px';p.style.background=`hsl(${Math.random()*360},100%,50%)`;p.style.setProperty('--tx',(Math.random()*200-100)+'px');p.style.setProperty('--ty',(Math.random()*200-100)+'px');document.body.appendChild(p);setTimeout(()=>p.remove(),1000);}}
+    function saveGame(){localStorage.setItem('petSaveFashion',JSON.stringify(state));}
+    function loadGame(){const s=localStorage.getItem('petSaveFashion');if(s){const l=JSON.parse(s);state={...state,...l,inventory:l.inventory||[],isDead:false};}}
+    
+    init();
+</script>
+</body>
+</html>
